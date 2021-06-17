@@ -1,0 +1,50 @@
+future::plan("multisession")
+pbp <- nflfastR::load_pbp(2000:2020)
+
+browns.coaches <- pbp %>%
+  filter(season >= 2001 & posteam == "CLE")
+
+browns.coaches$head.coach <- ifelse(browns.coaches$home_team == "CLE", 
+                                    browns.coaches$home_coach, browns.coaches$away_coach)
+
+cumepa <- browns.coaches %>%
+  group_by(head.coach) %>%
+  filter(!is.na(epa), play_type=="no_play" | play_type=="pass" | play_type=="run") %>%
+  mutate(cum.epa = cumsum(epa)) %>%
+  select(cum.epa, head.coach)
+
+cumepa <- cumepa %>%
+  group_by(head.coach) %>%
+  mutate(
+    play_num = seq_along(head.coach)
+  )
+
+browns.coaches.hot.seat <- cumepa %>%
+  group_by(head.coach) %>%
+  summarize(
+    final.epa = last(cum.epa),
+    total.plays = last(play_num),
+    hot.seat.ratio = total.plays / final.epa)
+
+ggplot(browns.coaches.hot.seat, aes(x = reorder(head.coach, -hot.seat.ratio), y = hot.seat.ratio, fill = as.factor(hot.seat.ratio))) +
+  geom_col(width = .845) +
+  scale_fill_manual(values=rep(c("#fb4f14","#22150c"), 11)) +
+  geom_hline(yintercept = mean(browns.coaches.hot.seat$hot.seat.ratio), size = .8, color = "black", linetype = "dashed") +
+  geom_hline(yintercept = 0, size = .8, color = "black", linetype = "solid") +
+  theme(aspect.ratio = 9 / 16) +
+  coord_cartesian(clip = 'off') +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.text.y=element_text(size=11,colour="#535353",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#535353",face="bold",vjust=1.5)) +
+  theme(axis.title.x = element_blank()) +
+  theme(plot.title=element_text(face="bold", colour="#3C3C3C",size=15)) +
+  theme(axis.ticks = element_blank()) +
+  scale_y_continuous(breaks = seq(-30, 15, 5)) +
+  expand_limits(y = c(.65)) +
+  ylab("Cumulative Expected Points Added") +
+  theme(legend.position = "none")
