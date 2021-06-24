@@ -1,0 +1,80 @@
+pbp <- nflfastR::load_pbp(2020)
+
+roster <- nflfastR::fast_scraper_roster(2020)
+
+rushing.pbp <- pbp %>%
+  group_by(rusher_player_name, rusher_player_id, posteam) %>%
+  filter(play_type == 'run' & season_type == "REG") %>%
+  summarize(total = n(),
+            blos = sum(rushing_yards <= 0, na.rm = TRUE),
+            avg = blos / total) %>%
+  filter(total >= 100) %>%
+  nflfastR::decode_player_ids() %>%
+  left_join(roster, by = c("rusher_player_id" = "gsis_id")) %>%
+  filter(position == "RB")
+
+rushing.pbp <- rushing.pbp %>%
+  mutate(
+    ol.score = case_when(
+      posteam == "ARI" ~ 60.7,
+      posteam == "ATL" ~ 64.1,
+      posteam == "BAL" ~ 69.8,
+      posteam == "BUF" ~ 69.6,
+      posteam == "CAR" ~ 65.4,
+      posteam == "CHI" ~ 69.5,
+      posteam == "CIN" ~ 65.0,
+      posteam == "DAL" ~ 57.2,
+      posteam == "CLE" ~ 82.6,
+      posteam == "DEN" ~ 58.0,
+      posteam == "DET" ~ 70.3,
+      posteam == "GB" ~ 75.5,
+      posteam == "HOU" ~ 59.3,
+      posteam == "IND" ~ 79.2,
+      posteam == "JAX" ~ 60.2,
+      posteam == "KC" ~ 71.0,
+      posteam == "LA" ~ 78.7,
+      posteam == "LAC" ~ 46.5,
+      posteam == "LV" ~ 59.3,
+      posteam == "MIA" ~ 55.9,
+      posteam == "MIN" ~ 65.7,
+      posteam == "NE" ~ 76.2,
+      posteam == "NO" ~ 74.3,
+      posteam == "NYJ" ~ 65.2,
+      posteam == "PHI" ~ 67.1,
+      posteam == "PIT" ~ 50.3,
+      posteam == "SF" ~ 81.0,
+      posteam == "TB" ~ 71.3,
+      posteam == "TEN" ~ 77.8,
+      posteam == "SEA" ~ 72.3,
+      posteam == "WAS" ~ 71.5
+    )
+  )
+
+
+###PLOTTING
+
+ggplot(rushing.pbp) +
+  aes(x = ol.score, y = avg) +
+  geom_point(colour = rushing.pbp$team_color, size = rushing.pbp$total/25) +
+  theme_bw() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1)) +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Offensive Line Blocking Score") +
+  ylab("% of Runs Stopped at LOS") +
+  geom_text_repel(aes(label = rusher_player_name, fontface = 'bold')) +
+  geom_hline(yintercept = mean(rushing.pbp$avg), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(rushing.pbp$ol.score), size = .8, color = "black", linetype = "dashed") +
+  geom_smooth(method='lm', se = FALSE)
