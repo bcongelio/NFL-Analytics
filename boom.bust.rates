@@ -1,0 +1,48 @@
+pbp <- load_pbp(2020)
+roster <- nflfastR::fast_scraper_roster(2020)
+
+boom.metric <- pbp %>%
+  group_by(passer_player_name, passer_player_id) %>%
+  dplyr::filter(play_type %in% c("pass")) %>%
+  dplyr::filter(!is.na(down)) %>%
+  dplyr::filter(season_type == "REG") %>%
+  dplyr::summarize(total.attempts = sum(complete_pass == 1 | incomplete_pass == 1 | interception == 1),
+            boom.epa = sum(comp_air_epa >= 1, na.rm = TRUE),
+            bust.epa = sum(comp_air_epa <= -1, na.rm = TRUE),
+            boom.rate = boom.epa / total.attempts,
+            bust.rate = bust.epa / total.attempts,
+            avg.air.yards = mean(air_yards, na.rm = TRUE)) %>%
+  decode_player_ids() %>%
+  left_join(roster, by = c("passer_player_id" = "gsis_id")) %>%
+  dplyr::filter(total.attempts >= 100) %>%
+  left_join(teams_colors_logos, by = c("team" = "team_abbr"))
+
+boom.metric <- boom.metric[-c(44), ]
+
+ggplot(data = boom.metric, aes(x = boom.rate, y = avg.air.yards)) +
+  geom_point(color = boom.metric$team_color, size = boom.metric$total.attempts / 75) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Boom Rate") +
+  ylab("Avg. Air Yards") +
+  geom_text_repel(aes(label = passer_player_name), fontface = "bold", family = "Chivo", point.padding = 2) +
+  geom_hline(yintercept = mean(boom.metric$avg.air.yards), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(boom.metric$boom.rate), size = .8, color = "black", linetype = "dashed") +
+  geom_smooth(method = "lm", se = FALSE, size = 1.5)
+
+ggsave("boom-airyards.png", dpi = 400)
+
