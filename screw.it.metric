@@ -1,0 +1,116 @@
+library(tidyverse)
+library(nflfastR)
+library(ggimage)
+
+pbp <- nflfastR::load_pbp(2020)
+
+third.down <- pbp %>%
+  group_by(posteam) %>%
+  filter(play_type == "pass" & !is.na(down) & season_type == "REG") %>%
+  filter(wp > .20, wp < .80, half_seconds_remaining > 120) %>%
+  filter(down == 3 & ydstogo >= 10) %>%
+  summarize(total = n(),
+            avg.ydstogo = mean(ydstogo),
+            avg.airyards = mean(air_yards, na.rm = T),
+            conversion = sum(yards_gained >= ydstogo) / total,
+            yardline = mean(yardline_100)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+ggplot(data = third.down, aes(x = avg.airyards, y = conversion)) + 
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Average Air Yards") +
+  ylab("Conversion Rate") +
+  geom_hline(yintercept = mean(third.down$conversion), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(third.down$avg.airyards), size = .8, color = "black", linetype = "dashed")
+
+ggsave("goforit.png", dpi = 400)
+
+
+####FIELD POSITION TABLE
+
+gt_theme_538 <- function(data,...) {
+  data %>%
+    opt_all_caps()  %>%
+    opt_table_font(
+      font = list(
+        google_font("Chivo"),
+        default_fonts()
+      )
+    ) %>%
+    text_transform(
+      locations = cells_body(
+        vars(team_wordmark)
+      ),
+      fn = function(x) {
+        web_image(
+          url = x,
+          height = 25
+        )
+      }
+    ) %>%
+    tab_style(
+      style = cell_borders(
+        sides = "bottom", color = "transparent", weight = px(2)
+      ),
+      locations = cells_body(
+        columns = TRUE,
+        # This is a relatively sneaky way of changing the bottom border
+        # Regardless of data size
+        rows = nrow(data$`_data`)
+      )
+    )  %>% 
+    tab_options(
+      column_labels.background.color = "white",
+      table.border.top.width = px(3),
+      table.border.top.color = "transparent",
+      table.border.bottom.color = "transparent",
+      table.border.bottom.width = px(3),
+      column_labels.border.top.width = px(3),
+      column_labels.border.top.color = "transparent",
+      column_labels.border.bottom.width = px(3),
+      column_labels.border.bottom.color = "black",
+      data_row.padding = px(3),
+      source_notes.font.size = 12,
+      table.font.size = 16,
+      heading.align = "left",
+      ...
+    ) 
+}
+
+
+####table
+library(gt)
+
+third.down.play.calling <- third.down %>%
+  select(team_wordmark, yardline) %>%
+  gt() %>%
+  tab_spanner(
+    label = "3rd & 10+ To Go: Avg. Field Position",
+    columns = vars(team_wordmark, yardline)
+  ) %>% 
+  cols_label(
+    team_wordmark = "Team",
+    yardline = "Avg. Field Position"
+  ) %>% 
+  tab_source_note(
+    source_note = md("Data: nflfastR<br>Table: @BradCongelio")
+  ) %>% 
+  gt_theme_538(table.width = px(200))
+
+gtsave(third.down.play.calling, "3rddown.png")
