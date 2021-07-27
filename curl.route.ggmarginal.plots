@@ -1,0 +1,169 @@
+urlfile<-'https://raw.githubusercontent.com/SportsInfoSolutions/AnalyticsChallenge2021/main/Data/PlayByPlay.csv'
+pbp<-read.csv(urlfile)
+
+urlfile<-'https://raw.githubusercontent.com/SportsInfoSolutions/AnalyticsChallenge2021/main/Data/SkillPositionPlayers.csv'
+skill.players<-read.csv(urlfile)
+
+complete.data <- pbp %>%
+  inner_join(skill.players, by = c("GameID","EventID"))
+
+complete.data$EPA <- as.numeric(as.character(complete.data$EPA))  
+
+complete.data <- complete.data %>%
+  filter(str_detect(EventType, 'pass')) %>%
+  filter(Route != "NULL" & Route != "Blocking" & Route != "Spike" & DropType != "Spike")
+
+total.catches <- complete.data %>%
+  group_by(Route) %>%
+  summarize(
+    total.receptions = sum(Reception == 1)
+  )
+
+curl.catches <- complete.data %>%
+  group_by(Route) %>%
+  filter(Route == "Curl" & Reception == 1)
+
+curl.catch.depth <- curl.catches %>%
+  group_by(OffensiveTeam, ThrowDepth) %>%
+  summarize(avg.epa = mean(EPA))
+
+curl.catch.depth$ThrowDepth <- as.numeric(as.character(curl.catch.depth$ThrowDepth))
+
+curl.catch.depth <- curl.catch.depth %>%
+  left_join(teams_colors_logos, by = c("OffensiveTeam" = "team_nick"))
+
+avg.epa.info <- curl.catch.depth %>%
+  group_by(OffensiveTeam) %>%
+  summarize(avg.epa = mean(avg.epa))
+
+nfc.west <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Seahawks", "Rams", "Cardinals", "49ers"))
+
+nfc.east <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Football Team", "Giants", "Cowboys", "Eagles"))
+
+nfc.south<- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Saints", "Buccaneers", "Panthers", "Falcons"))
+
+nfc.north <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Packers", "Bears", "Vikings", "Lions"))
+
+afc.south <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Titans", "Colts", "Texans", "Jaguars"))
+
+afc.east <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Bills", "Dolphins", "Patriots", "Jets"))
+
+afc.north <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Steelers", "Ravens", "Browns", "Bengals"))
+
+afc.west <- curl.catch.depth %>%
+  filter(OffensiveTeam %in% c("Chiefs", "Raiders", "Chargers", "Broncos"))
+
+########################
+
+p1 <- p2 <- p3 <- p4 <- p5 <- p6 <- p7 <- p8 <- ggplot(afc.west, aes(x = ThrowDepth, y = avg.epa, fill = OffensiveTeam)) +
+  geom_point(alpha = 0, color = afc.west$team_color) +
+  geom_image(aes(image = team_logo_espn), asp = 16/9, size = .045) +
+  theme_bw() +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 25)) +
+  scale_y_continuous(breaks = seq(-1, 3, .5)) +
+  theme(text = element_text(family = "Chivo")) +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  theme(legend.position = "none") +
+  labs(title = "AFC West") +
+  xlab("Air Yards") +
+  ylab("Expected Points Added") +
+  geom_hline(yintercept = mean(afc.west$avg.epa), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(afc.west$ThrowDepth), size = .8, color = "black", linetype = "dashed")
+
+ggExtra::ggMarginal(
+  p = p8,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p7,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p6,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p5,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p4,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p3,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p2,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+ggExtra::ggMarginal(
+  p = p1,
+  type = 'density',
+  margins = 'both',
+  size = 5,
+  groupColour = TRUE,
+  groupFill = TRUE
+)
+
+
+afc.west.plot <- ggMarginal(p8)
+afc.north.plot <- ggMarginal(p7)
+afc.east.plot <- ggMarginal(p6)
+afc.south.plot <- ggMarginal(p5)
+
+
