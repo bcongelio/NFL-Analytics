@@ -1,0 +1,191 @@
+library(tidyverse)
+library(rvest)
+library(ggalt)
+library(nflfastR)
+library(ggthemes)
+library(extrafont)
+
+##SCRAPING DATA FROM PFR
+url <- "https://www.pro-football-reference.com/years/2020/passing.hTm"
+passing.2020 <- url %>%
+  read_hTml() %>%
+  hTml_table() %>%
+  as.data.frame()
+
+##ADDING SEASON COLUMN
+passing.2020$season <- 2020
+
+##COMBING 2006 - 2020 TO DROP QBR
+no.qbr <- rbind(passing.2006, passing.2007, passing.2008,
+                passing.2009, passing.2010, passing.2011, passing.2012,
+                passing.2013, passing.2014, passing.2015, passing.2016,
+                passing.2017, passing.2018, passing.2019, passing.2020)
+
+##DROPPING QBR FROM 2006 - 2020
+no.qbr$QBR <- NULL
+
+##COMBINING THE DATA
+complete.data <- no.qbr %>%
+  rbind(passing.2001, passing.2002, passing.2003, passing.2004, passing.2005)
+
+##CLEANING WEIRD THINGS FROM DATA
+complete.data <- complete.data[-c(30, 61, 92, 131, 162, 193, 235, 266, 297, 341, 372, 403, 452, 483,
+                                  514, 557, 588, 619, 656, 687, 743, 774, 830, 861,
+                                  892, 933, 964, 1021, 1052, 1083, 1120, 1151, 1182, 1217,
+                                  1248, 1279, 1326, 1357, 1388, 1431, 1462, 1493, 1546,
+                                  1577, 1608, 1656, 1687, 1718, 1766, 1797, 1828, 1859,
+                                  1891, 1922, 1953, 2009, 2040, 2071),]
+
+##REMOVING * AND + FROM PLAYER NAMES
+complete.data$Player <- stringr::str_replace(complete.data$Player, '\\*', '')
+complete.data$Player <- stringr::str_replace(complete.data$Player, '\\+', '')
+
+##SWITCHING STUFF TO NUMERIC
+complete.data$Cmp. <- as.numeric(as.character(complete.data$Cmp.))
+complete.data$Y.C <- as.numeric(as.character(complete.data$Y.C))
+complete.data$TD. <- as.numeric(as.character(complete.data$TD.))
+complete.data$Int. <- as.numeric(as.character(complete.data$Int.))
+complete.data$Sk. <- as.numeric(as.character(complete.data$Sk.))
+
+##SWITCHING NAMES
+complete.data <- complete.data %>%
+  rename(compercent = Cmp.)
+
+##PREPARING TEAMMATE SUPPORT STUFF
+rushing_2020 <- rushing_2020[-c(33), ]
+
+##ADDING PFR-STYLE TEAM ABBR
+rushing_2020 <- rushing_2020 %>%
+  mutate(
+    team_abbr = case_when(
+      Tm == "Arizona Cardinals" ~ "ARI",
+      Tm == "Atlanta Falcons" ~ "ATL",
+      Tm == "Baltimore Ravens" ~ "BAL",
+      Tm == "Buffalo Bills" ~ "BUF",
+      Tm == "Carolina Panthers" ~ "CAR",
+      Tm == "Chicago Bears" ~ "CHI",
+      Tm == "Cincinnati Bengals" ~ "CIN",
+      Tm == "Cleveland Browns" ~ "CLE",
+      Tm == "Dallas Cowboys" ~ "DAL",
+      Tm == "Denver Broncos" ~ "DEN",
+      Tm == "Detroit Lions" ~ "DET",
+      Tm == "Green Bay Packers" ~ "GNB",
+      Tm == "Houston Texans" ~ "HOU",
+      Tm == "Indianapolis Colts" ~ "IND",
+      Tm == "Jacksonville Jaguars" ~ "JAX",
+      Tm == "Kansas City Chiefs" ~ "KAN",
+      Tm == "Las Vegas Raiders" ~ "LVR",
+      Tm == "Los Angeles Chargers" ~ "LAC",
+      Tm == "Los Angeles Rams" ~ "LAR",
+      Tm == "Miami Dolphins" ~ "MIA",
+      Tm == "Minnesota Vikings" ~ "MIN",
+      Tm == "New England Patriots" ~ "NWE",
+      Tm == "New Orleans Saints" ~ "NOR",
+      Tm == "New York Giants" ~ "NYG",
+      Tm == "New York Jets" ~ "NYJ",
+      Tm == "Philadelphia Eagles" ~ "PHI",
+      Tm == "Pittsburgh Steelers" ~ "PIT",
+      Tm == "San Francisco 49ers" ~ "SFO",
+      Tm == "Seattle Seahawks" ~ "SEA",
+      Tm == "Tampa Bay Buccaneers" ~ "TAM",
+      Tm == "Tennessee Titans" ~ "TEN",
+      Tm == "Washington Football Team" ~ "WAS",
+      Tm == "St. Louis Rams" ~ "STL",
+      Tm == "San Diego Chargers" ~ "SDG",
+      Tm == "Oakland Raiders" ~ "OAK"
+    ) 
+  )
+
+##COMBINING RUSING STATS INTO A COMPLETE FILE
+rushing.stats <- rbind(rushing_2002, rushing_2003, rushing_2004, rushing_2005,
+                       rushing_2006, rushing_2007, rushing_2008, rushing_2009,
+                       rushing_2010, rushing_2011, rushing_2012, rushing_2013,
+                       rushing_2014, rushing_2015, rushing_2016, rushing_2017,
+                       rushing_2018, rushing_2019, rushing_2020)
+
+##MERGIN RUSHING INTO PREVIOUS COMPLETE DATA
+complete.data <- complete.data %>%
+  left_join(rushing.stats, by = c("Tm" = "team_abbr", "season" = "season"))
+
+##SWITCHING NAMES
+complete.data <- complete.data %>%
+  rename(rush.yards.attempt = `Y/A`)
+
+##GRABBING BEN ROETHLISBERGER'S STUFF
+summarized.data <- complete.data %>%
+  group_by(Player) %>%
+  filter(Att.x >= 100 & Pos == "QB" & season >= 2004) %>% ##MAKIN SURE TO INCLUDE JUST SEASONS BEN PLAYED
+  ##USING PERCENT_RANK IN DPLYR TO GET PERCENTILE RANKS AMONG ALL PASSERS
+  summarize(completion.rank.2020 = percent_rank(compercent)[season == 2020],
+            completion.rank.not2020 = mean(percent_rank(compercent)[season != 2020]),
+            ypc.rank.2020 = percent_rank(Y.C)[season == 2020],
+            ypc.rank.not2020 = mean(percent_rank(Y.C)[season != 2020]),
+            td.percent.2020 = percent_rank(TD.)[season == 2020],
+            td.percent.not2020 = mean(percent_rank(TD.)[season != 2020]),
+            int.percent.2020 = percent_rank(desc(Int.))[season == 2020], ##USING `DESC` TO REVERSE THIS PERCENTILE
+            int.percent.not2020 = mean(percent_rank(desc(Int.))[season != 2020]), ##USING `DESC` TO REVERSE THIS PERCENTILE
+            sack.percent.2020 = percent_rank(desc(Sk.))[season == 2020], ##USING `DESC` TO REVERSE THIS PERCENTILE
+            sack.percent.not2020 = mean(percent_rank(desc(Sk.))[season != 2020]), ##USING `DESC` TO REVERSE THIS PERCENTILE
+            rushing.help.2020 = percent_rank(desc(EXP))[season == 2020], ##USING `DESC` TO REVERSE THIS PERCENTILE
+            rushing.help.not2020 = mean(percent_rank(desc(EXP))[season != 2020]), ##USING `DESC` TO REVERSE THIS PERCENTILE
+            rushing.attempt.2020 = percent_rank(rush.yards.attempt)[season == 2020],
+            rushing.attempt.not2020 = mean(percent_rank(rush.yards.attempt)[season != 2020])) 
+
+##GETTING JUST TOM
+ben.summarized <- summarized.data %>%
+  filter(Player == "Ben Roethlisberger")
+
+##PIVOTING DATA TO LONG FORMAT
+ben.summarized <-tidyr::pivot_longer(ben.summarized, 
+                      cols = -Player, 
+                      names_to = c('name', '.value'), 
+                      names_pattern = '(.*)\\.(.*)')
+
+##CALLING IN NFLFASTR COLORS TO GET COLOR CODES FOR PLOTTING
+teams <- teams_colors_logos
+
+y.axis.order <- c("rushing.attempt", "rushing.help", "sack.percent", "int.percent", "td.percent", "ypc.rank", "completion.rank")
+
+##PLOTTING
+ggplot() +
+  geom_dumbbell(data = ben.summarized, aes(y = factor(name, level = y.axis.order), x = `2020`, xend = not2020),
+                size = .5, color = "white",
+                colour_x = "#000000",
+                colour_xend = "#ffb612",
+                dot_guide = FALSE, dot_guide_size = 1, dot_guide_colour = "black",
+                size_x = 5, size_xend = 5) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=14,colour="#000000",family = "Chivo", face="bold")) +
+  theme(axis.text.y=element_text(size=14,colour="#000000", family = "Chivo", face="plain")) +
+  theme(axis.title.y=element_text(size=14,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=14,colour="#000000", family = "Chivo", face="bold",vjust=-2)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Percentile Rank Among Passers") +
+  ylab("") +
+  scale_y_discrete(labels = c("Rush yards / attempt", "Rushing offense", "Sack rate", "Interception rate", "Touchdown percentage",
+                              "Yards per completion", "Completion rate")) +
+  scale_x_continuous(labels = c("1st", "25th", "50th", "75th", "99th")) +
+  annotate("segment", x = 0.4844444, xend = 0.64666667, y = "completion.rank", yend = "completion.rank",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.5333333, xend = 0.01800202, y = "ypc.rank", yend = "ypc.rank",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.4800000, xend = 0.64666667, y = "td.percent", yend = "td.percent",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.4533333, xend = 0.84666667, y = "int.percent", yend = "int.percent",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.4622222, xend = 0.98000000, y = "sack.percent", yend = "sack.percent",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.5155556, xend = 0.28666667, y = "rushing.help", yend = "rushing.help",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm"))) +
+  annotate("segment", x = 0.4844444, xend = 0.08666667, y = "rushing.attempt", yend = "rushing.attempt",
+           color = "black", size = .7, arrow = arrow(length = unit(3, "mm")))
+
+
+ggsave("benpercentiles.png", dpi = 400)
