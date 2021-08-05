@@ -1,0 +1,144 @@
+library(tidyverse)
+library(nflfastR)
+library(ggimage)
+library(scales)
+
+pbp <- nflfastR::load_pbp(2018:2020)
+
+
+##RUSHING & PASSING EPA
+rushing.passing.epa <- pbp %>%
+  group_by(posteam) %>%
+  filter(wp > .20 & wp < .80 & half_seconds_remaining > 120 & !is.na(down)) %>%
+  summarize(
+    pass.epa = mean(epa[play_type == "pass"], na.rm = T),
+    rush.epa = mean(epa[play_type == "run"], na.rm = T)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+##PLOTTING RUSHING & PASSING EPA
+ggplot(data = rushing.passing.epa, aes(x = pass.epa, y = rush.epa)) +
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Mean Passing EPA") +
+  ylab("Mean Rushing EPA") +
+  geom_hline(yintercept = mean(rushing.passing.epa$rush.epa), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(rushing.passing.epa$pass.epa), size = .8, color = "black", linetype = "dashed")
+
+ggsave("overallepas.png", dpi = "retina")
+
+##RUSHING SUCCESS RATE
+rushing.success <- pbp %>%
+  group_by(posteam) %>%
+  filter(wp > .20 & wp < .80 & half_seconds_remaining > 120 & !is.na(down)) %>%
+  filter(rush == 1) %>%
+  summarize(total = n(),
+            success.rate = sum(success == 1) / total) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+##PLOTTING RUSHING SUCCESS
+ggplot(data = rushing.success, aes(x = reorder(posteam, success.rate), y = success.rate)) +
+  geom_col(width = .845, fill = rushing.success$team_color, color = rushing.success$team_color2) +
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9, size = 0.025) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1),
+                     expand = expansion(mult = c(0,.1))) +
+  coord_flip() +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.text.y=element_blank()) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("") +
+  ylab("Rushing Success Rate")
+
+ggsave("rushingsuccess.png", dpi = "retina")
+
+##PASSING SUCCESS RATE
+passing.success <- pbp %>%
+  group_by(posteam) %>%
+  filter(wp > .20 & wp < .80 & half_seconds_remaining > 120 & !is.na(down)) %>%
+  filter(pass == 1) %>%
+  summarize(total = n(),
+            success.rate = sum(success == 1, na.rm = T) / total) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+##PLOTTING PASSING SUCCESS
+ggplot(data = passing.success, aes(x = reorder(posteam, success.rate), y = success.rate)) +
+  geom_col(width = .845, fill = passing.success$team_color, color = passing.success$team_color2) +
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9, size = 0.025) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1),
+                     expand = expansion(mult = c(0,.1))) +
+  coord_flip() +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.text.y=element_blank()) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("") +
+  ylab("Passing Success Rate")
+
+ggsave("passingsuccess.png", dpi = "retina")
+
+##YARDS PER CARRY & AIR YARDS
+ypc.airyards <- pbp %>%
+  group_by(posteam) %>%
+  filter(wp > .20 & wp < .80 & half_seconds_remaining > 120 & !is.na(down)) %>%
+  summarize(ypc = mean(yards_gained[rush == 1], na.rm = T),
+            air.yards = mean(air_yards[pass == 1], na.rm = T)) %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+##PLOTTING YPC & AIR YARDS
+ggplot(data = ypc.airyards, aes(x = ypc, y = air.yards)) +
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",family = "Chivo")) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Average Yards Per Carry") +
+  ylab("Average Air Yards per Attempt") +
+  geom_hline(yintercept = mean(ypc.airyards$air.yards), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(ypc.airyards$ypc), size = .8, color = "black", linetype = "dashed")
+
+ggsave("ypcairyards.png", dpi = "retina")
