@@ -1,0 +1,64 @@
+library(nflfastR)
+library(nflreadr)
+library(ggimage)
+
+nextgen.stuff <- nflreadr::load_nextgen_stats(
+  seasons = 2021,
+  stat_type = "receiving",
+  file_type = getOption("nflreadr.prefer", default = "qs")
+)
+
+next.gen.stuff.sked <- nextgen.stuff %>%
+  group_by(week, team_abbr) %>%
+  summarize(
+    avg.cushion = (avg_cushion * targets) / sum(targets, na.rm = TRUE),
+    avg.separation = (avg_separation * targets) / sum(targets, na.rm = TRUE)
+  )
+
+####for later
+next.gen.stuff.sked <- next.gen.stuff.sked %>%
+  group_by(week, team_abbr) %>%
+  summarize(
+    avg.cushion = mean(avg.cushion),
+    avg.separation = mean(avg.separation)
+  )
+
+schedules <- load_schedules(2021)
+
+schedules %>%
+  select(season, week, home_team, away_team, result) %>%
+  filter(!is.na(result)) %>%
+  clean_homeaway() %>%
+  left_join(next.gen.stuff.sked, by = c("week", "opponent" = "team_abbr")) -> complete.data
+
+complete.data <- complete.data %>%
+  left_join(teams_colors_logos, by = c("team" = "team_abbr"))
+
+complete.data <- na.omit(complete.data)
+
+ggplot(data = complete.data, aes(x = team, y = avg.separation)) +
+  geom_boxplot() +
+  geom_jitter(width = 0.2, alpha = .2, color = complete.data$team_color) +
+  geom_hline(yintercept = mean(complete.data$avg.separation), color = "black", linetype = "dashed", size = 0.8) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x= element_blank()) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("") +
+  ylab("Weighted Avg. of Separation per Week") +
+  geom_image(aes(x = team, image = team_logo_wikipedia), y = .4,
+             asp = 16/9, size = 0.035,
+             inherit.aes = FALSE) +
+  coord_cartesian(clip = "off")
+
+ggsave("sep.png", dpi = 400)
