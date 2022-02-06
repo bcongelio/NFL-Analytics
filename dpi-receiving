@@ -1,0 +1,43 @@
+##Grabbing play-by-play data for 2020
+data.2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
+
+data.2020 <- clean_pbp(data.2020)
+
+dpi.receiving <- data.2020 %>%
+  group_by(receiver,receiver_id, posteam) %>%
+  filter(penalty_type == "Defensive Pass Interference") %>%
+  summarize(total.pen = n(),
+            total.yards = sum(penalty_yards))
+
+dpi.receiving <- dpi.receiving %>%
+  filter(total.yards >= 76)
+
+roster <- fast_scraper_roster(2020)
+dpi.receiving <- nflfastR::decode_player_ids(dpi.receiving)
+
+dpi.receiving <- dpi.receiving %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+dpi.receiving <- dpi.receiving %>%
+  left_join(roster, by = c("receiver_id" = "gsis_id"))
+
+ggplot(dpi.receiving, aes(x = reorder(receiver, -total.yards), y = total.yards)) +
+  geom_col(fill = dpi.receiving$team_color, width = .845, color = dpi.receiving$team_color2) +
+  geom_image(aes(image = headshot_url), asp = 16/9, size = .09, nudge_y = 12) +
+  theme(aspect.ratio = 9 / 16) +
+  coord_cartesian(clip = 'off') +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.text.y=element_text(size=11,colour="#535353",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#535353",face="bold",vjust=1.5)) +
+  theme(axis.title.x = element_blank()) +
+  theme(plot.title=element_text(face="bold", colour="#3C3C3C",size=15)) +
+  theme(axis.ticks = element_blank()) +
+  expand_limits(y = c(200)) +
+  ylab("Yardage Gained on DPI Calls")
+
+ggsave("updateddpi.png", dpi = 400)
