@@ -1,0 +1,24 @@
+ggplot(data = boom.metric, aes(x = boom.rate, y = avg.air.yards)) +
+  geom_point(color = boom.metric$team_color, size = boom.metric$total.attempts / 75) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10),
+                     labels = scales::percent_format(accuracy = 1)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(panel.grid.minor = element_blank()) +
+  theme(axis.ticks = element_blank()) +
+  theme(axis.text.x=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#000000",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  xlab("Boom Rate") +
+  ylab("Avg. Air Yards") +
+  geom_text_repel(aes(label = passer_player_name), fontface = "bold", family = "Chivo", point.padding = 2) +
+  geom_hline(yintercept = mean(boom.metric$avg.air.yards), size = .8, color = "black", linetype = "dashed") +
+  geom_vline(xintercept = mean(boom.metric$boom.rate), size = .8, color = "black", linetype = "dashed") +
+  geom_smooth(method = "lm", se = FALSE, size = 1.5)
