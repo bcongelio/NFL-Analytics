@@ -1,0 +1,37 @@
+##Grabbing play-by-play data for 2020
+data.2020 <- readRDS(url('https://raw.githubusercontent.com/guga31bb/nflfastR-data/master/data/play_by_play_2020.rds'))
+
+qb.hits.df <- data.2020 %>%
+  group_by(defteam) %>%
+  summarise(total.qb.hits = sum(qb_hit[pass == 1], na.rm = TRUE),
+            num.plays = sum(special == 0 & penalty == 0), na.rm = TRUE)
+
+qb.hits.df <- qb.hits.df[-c(33),]
+
+qb.hits.df <- qb.hits.df %>%
+  left_join(teams_colors_logos, by = c('defteam' = 'team_abbr'))
+
+ggplot(qb.hits.df, aes(x = num.plays, y = total.qb.hits)) +
+  geom_hline(yintercept = mean(qb.hits.df$total.qb.hits), color = "red", linetype = "dashed", alpha = 0.5) +
+  geom_vline(xintercept = mean(qb.hits.df$num.plays), color = "red", linetype = "dashed", alpha = 0.5) +
+  geom_image(aes(image = team_logo_espn), asp = 16 / 9) +
+  theme_bw() +
+  scale_y_continuous(breaks = seq(0, 40, by = 5)) +
+  scale_x_continuous(breaks = seq(150, 230, by = 10)) +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#D0D0D0",size=.75)) +
+  theme(axis.text.x=element_text(angle = 50, vjust = 0.5,    size=11,colour="#535353",face="bold")) +
+  theme(axis.text.y=element_text(size=11,colour="#535353",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#535353",face="bold",vjust=1.5)) +
+  theme(axis.title.x=element_text(size=11,colour="#535353",face="bold",vjust=-.5)) +
+  theme(plot.title=element_text(face="bold", colour="#3C3C3C",size=15)) +
+  theme(aspect.ratio = 9 / 16) +
+  labs(title = "Total Defensive QB Hits \nvs. Total Number of Defensive Plays",
+       subtitle = "Thru Week #3", 
+       caption = "Twitter: @BradCongelio  |  Data: nflfastR") +
+  xlab("Total Number of Plays") +
+  ylab("Total QB Hits")
+
+ggsave("qbhitsweek3.png", dpi = 400)
