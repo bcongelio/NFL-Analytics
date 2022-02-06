@@ -1,0 +1,94 @@
+aggressive <- data %>%
+  group_by(posteam) %>%
+  filter(down == 3, wp > .20, wp < .80, half_seconds_remaining > 120, play_type == "pass") %>%
+  summarize(aggressiveness = sum(air_yards < 5, na.rm = TRUE),
+            total = n())
+
+aggressive <- data %>%
+  group_by(passer_player_name, passer_player_id, posteam) %>%
+  filter(down == 3, play_type == "pass", ydstogo >= 5, ydstogo <= 10) %>%
+  summarize(total = n(),
+            aggressiveness = sum(air_yards >= ydstogo, na.rm = TRUE),
+            percentage = aggressiveness / total)
+
+
+aggressive <- aggressive %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+aggressive <- decode_player_ids(aggressive)
+
+aggressive <- aggressive %>%
+  left_join(roster, by = c("passer_player_id" = "gsis_id"))
+
+aggressive <- aggressive %>%
+  filter(total >= 25)
+
+ggplot(aggressive, aes(x = reorder(passer_player_name, -percentage), y = percentage)) +
+  geom_col(fill = aggressive$team_color, width = .845) +
+  geom_image(aes(image = headshot_url), asp = 16/9, size = .035, nudge_y = .015) +
+  theme(aspect.ratio = 9 / 16) +
+  coord_cartesian(clip = 'off') +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.text.y=element_text(size=11,colour="#535353",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#535353",face="bold",vjust=1.5)) +
+  theme(axis.title.x = element_blank()) +
+  theme(plot.title=element_text(face="bold", colour="#3C3C3C",size=15)) +
+  theme(axis.ticks = element_blank()) +
+  scale_y_continuous(breaks = seq(0, .70, .05)) +
+  expand_limits(y = c(.65)) +
+  ylab("% of Throws Over Yards Needed")
+
+ggsave("finished-aggressiveness.png", dpi = 400)
+
+
+
+==============
+
+
+data <- nflfastR::load_pbp(2021)
+
+data <- data %>%
+  filter(week <= 11)
+
+aggressive <- data %>%
+  group_by(passer, passer_player_id, posteam) %>%
+  filter(down == 3, play_type == "pass", ydstogo >= 5, ydstogo <= 10) %>%
+  summarize(total = n(),
+            completions = sum(complete_pass == 1),
+            cpm.pct = completions / total,
+            aggressiveness = sum(air_yards >= ydstogo, na.rm = TRUE),
+            percentage = aggressiveness / total)
+
+aggressive <- aggressive %>%
+  left_join(teams_colors_logos, by = c("posteam" = "team_abbr"))
+
+aggressive <- aggressive %>%
+  filter(total >= 10)
+
+ggplot(aggressive, aes(x = percentage, y = cpm.pct)) +
+  geom_point(color = aggressive$team_color)
+
+ggplot(aggressive, aes(x = reorder(passer_player_name, -percentage), y = percentage)) +
+  geom_col(fill = aggressive$team_color, width = .845) +
+  geom_image(aes(image = headshot_url), asp = 16/9, size = .035, nudge_y = .015) +
+  theme(aspect.ratio = 9 / 16) +
+  coord_cartesian(clip = 'off') +
+  theme_bw() +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  theme(plot.background=element_rect(fill="#FFFFFF")) +
+  theme(panel.border=element_rect(colour="#FFFFFF")) +
+  theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
+  theme(axis.text.x = element_blank()) +
+  theme(axis.text.y=element_text(size=11,colour="#535353",face="bold")) +
+  theme(axis.title.y=element_text(size=11,colour="#535353",face="bold",vjust=1.5)) +
+  theme(axis.title.x = element_blank()) +
+  theme(plot.title=element_text(face="bold", colour="#3C3C3C",size=15)) +
+  theme(axis.ticks = element_blank()) +
+  scale_y_continuous(breaks = seq(0, .70, .05)) +
+  expand_limits(y = c(.65)) +
+  ylab("% of Throws Over Yards Needed")
