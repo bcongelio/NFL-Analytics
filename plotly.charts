@@ -1,0 +1,62 @@
+qb_pressures <- qb_pressures %>%
+  select(player, player_id, team_name, allowed_pressure_dropbacks, self_percent)
+
+time_to_throw <- time_to_throw %>%
+  select(player_id, avg_time_to_throw)
+
+qb_pressures <- left_join(qb_pressures, time_to_throw,
+                          by  = c("player_id" = "player_id"))
+
+qb_pressures <- left_join(qb_pressures, teams_colors_logos,
+                          by = c("team_name" = "team_abbr"))
+
+qb_pressures <- qb_pressures %>%
+  filter(avg_time_to_throw <= 4.00,
+         self_percent > 0)
+
+pressuresgraph <- ggplot(data = qb_pressures, aes(x = avg_time_to_throw, y = self_percent,
+                                                  text = paste(
+                                                    'Player: ', player, "\n",
+                                                    'Pressured DBs: ', allowed_pressure_dropbacks, "\n",
+                                                    'Avg. Time to Throw: ', avg_time_to_throw, "\n",
+                                                    '% of Pressure Self-Inflicted: ', self_percent, "\n",
+                                                    sep = ""))) +
+  geom_point(color = qb_pressures$team_color,
+             size = 3) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 10)) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5),
+                     labels = scales::percent_format(1, accuracy = 1)) +
+  xlab("Avg. Time To Throw (Seconds)") +
+  ylab("% of Pressures") +
+  theme_bw() +
+  theme(legend.position = "none") +
+  labs(title = "Avg. Time to Throw vs.\nSelf-Inflicted QB Pressure",
+       subtitle = "Interactive: Hover Over Points for Info",
+       caption = "@BradCongelio   |   Data: PFF") +
+  theme(
+    plot.background = element_rect(fill = "#f0f0f0", color = NA),
+    panel.background = element_rect(fill = "#f0f0f0", color = NA),
+    panel.grid.major =  element_line(color = "#d0d0d0"),
+    panel.border = element_blank(),
+    text = element_text(family = "Chivo"),
+    axis.text = element_text(face = "bold", color = "black", size = 13),
+    axis.title = element_text(face = "bold", size = rel(1.33)),
+    axis.title.x = element_text(margin = margin(0.5, 0, 0, 0, unit = "cm")),
+    axis.title.y = element_text(margin = margin(0, 0.5, 0, 0, unit = "cm"), angle =90),
+    plot.title.position = "plot",
+    plot.title = element_text(size = 18, face = "bold"),
+    plot.subtitle = element_text(size = 16, hjust = 0),
+    plot.caption = element_text(size = 10, hjust = 1),
+    axis.ticks = element_blank()
+  )
+
+interactive <- ggplotly(pressuresgraph, tooltip = c("text")) %>%
+  layout(title = list(text = paste0('<b>Avg. Time to Throw vs.\nSelf-Inflicted QB Pressure</b>',
+                                    '<br>',
+                                    '<sup>',
+                                    'Interactive: Hover Over Points for Info',
+                                    '</sup>'
+                                    )),
+         margin = list(t = 100))
+  
+htmlwidgets::saveWidget(as_widget(interactive), "selfpressures.html")
