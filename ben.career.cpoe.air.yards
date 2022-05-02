@@ -1,0 +1,40 @@
+library(ggfx)
+library(extrafont)
+
+ben.cpoe <- pbp %>%
+  group_by(season, passer_player_id, air_yards) %>%
+  filter(!is.na(cpoe) & passer == "B.Roethlisberger") %>%
+  summarize(count = n(),
+            cpoe = mean(cpoe))
+
+league.avg <- pbp %>%
+  group_by(season, air_yards) %>%
+  filter(!is.na(cpoe) & passer != "B.Roethlisberger") %>%
+  summarize(count = n(),
+            cpoe = mean(cpoe))
+
+ggplot(data = ben.cpoe, aes(x = air_yards, y = cpoe)) +
+  with_outer_glow(geom_smooth(data = league.avg, aes(x = air_yards, y = cpoe),
+                              color = "black", alpha = 0.7, se = FALSE, size = 0.5, linetype = "dashed"),
+                  color = "black", sigma = 5, expand = 2) +
+  with_outer_glow(geom_smooth(se = FALSE, aes(weight = count), size = 0.75, color = "#FFB612"),
+                  color = "#FFB612", sigma = 5, expand = 2) +
+  geom_point(color = ben.cpoe$, size = summary$count / 15, alpha = 0.4) + ###need to add team.color to ben.cpoe
+  xlim(-5, 40) + # makes sure the smoothing algorithm is evaluated between -10 and 40
+  coord_cartesian(xlim = c(-5, 30), ylim = c(-25, 25)) +
+  theme_minimal() +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1, scale = 1),
+                     breaks = scales::pretty_breaks(n = 5)) +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  theme(
+    plot.background = element_rect(fill = "#ffffff", color = NA),
+    panel.background = element_rect(fill = "#ffffff", color = NA),
+    panel.grid.major =  element_line(color = "#d0d0d0"),
+    axis.text.x = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"),
+    axis.text.y = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"),
+    axis.title = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"),
+    panel.border = element_blank()) +
+  xlab("Target Depth In Yards Thrown Beyond The Line Of Scrimmage (DOT)") +
+  ylab("Completion Percentage Over Expectation") +
+  facet_wrap(vars(season), ncol = 6, scales = "free") +
+  theme(strip.text = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"))
