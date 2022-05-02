@@ -1,5 +1,9 @@
+library(tidyverse)
+library(nflfastR)
 library(ggfx)
 library(extrafont)
+
+pbp <- nflfastR::load_pbp(2004:2021)
 
 ben.cpoe <- pbp %>%
   group_by(season, passer_player_id, air_yards) %>%
@@ -19,8 +23,8 @@ ggplot(data = ben.cpoe, aes(x = air_yards, y = cpoe)) +
                   color = "black", sigma = 5, expand = 2) +
   with_outer_glow(geom_smooth(se = FALSE, aes(weight = count), size = 0.75, color = "#FFB612"),
                   color = "#FFB612", sigma = 5, expand = 2) +
-  geom_point(color = ben.cpoe$, size = summary$count / 15, alpha = 0.4) + ###need to add team.color to ben.cpoe
-  xlim(-5, 40) + # makes sure the smoothing algorithm is evaluated between -10 and 40
+  geom_point(color = "black", size = ben.cpoe$count / 15, alpha = 0.4) +
+  xlim(-5, 40) + # makes sure the smoothing algorithm is evaluated between -5 and 40
   coord_cartesian(xlim = c(-5, 30), ylim = c(-25, 25)) +
   theme_minimal() +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1, scale = 1),
@@ -34,7 +38,9 @@ ggplot(data = ben.cpoe, aes(x = air_yards, y = cpoe)) +
     axis.text.y = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"),
     axis.title = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"),
     panel.border = element_blank()) +
-  xlab("Target Depth In Yards Thrown Beyond The Line Of Scrimmage (DOT)") +
+  xlab("Target Depth from Line of Scrimmage") +
   ylab("Completion Percentage Over Expectation") +
   facet_wrap(vars(season), ncol = 6, scales = "free") +
   theme(strip.text = element_text(family = "Garamond", size = 10, color = "#000000", face = "bold"))
+
+ggsave("bencpoe.png", dpi = 400)
