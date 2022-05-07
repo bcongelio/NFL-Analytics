@@ -2,7 +2,6 @@
 ## this is all very much a work in progress
 ###########
 
-
 library(tidyverse)
 library(nflreadr)
 library(nflfastR)
@@ -59,23 +58,18 @@ stats.money <- stats.money %>%
 
 stats.money <- stats.money %>%
   group_by(player_id, full_name, team) %>%
-  summarize(epa.money = base_salary / total.epa,
-            ay.money = base_salary / total.ay,
-            py.money = base_salary / total.py,
-            td.money = base_salary / total.td)
+  summarize(epa.money = log(base_salary) / total.epa,
+            ay.money = log(base_salary) / total.ay,
+            py.money = log(base_salary) / total.py,
+            td.money = log(base_salary) / total.td)
 
 stats.money <- stats.money %>%
   left_join(teams_colors_logos, by = c("team" = "team_abbr")) %>%
   select(full_name, epa.money, ay.money, py.money, td.money, team_color) %>%
   ungroup()
 
-testing <- melt(stats.money)
+stats.money <- melt(stats.money)
 
-epa.per.play <- epa.per.play %>%
-  group_by(player_id) %>%
-  mutate(epa.per.dollar = base_salary / total.epa) %>%
-  filter(total.attempts >= 400)
-  
-ggplot(data = testing, aes(x = variable, y = value)) +
+ggplot(data = stats.money, aes(x = variable, y = value)) +
   geom_boxplot() +
   geom_jitter(color = testing$team_color)
