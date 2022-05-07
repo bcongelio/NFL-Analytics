@@ -1,0 +1,81 @@
+###########
+## this is all very much a work in progress
+###########
+
+
+library(tidyverse)
+library(nflreadr)
+library(nflfastR)
+library(reshape2)
+
+salaries <- nflreadr::load_contracts()
+
+salaries.2021 <- unnest(salaries)
+
+salaries.2021 <- salaries.2021 %>%
+  filter(year == 2021 & is_active == "TRUE" & position == "QB")
+
+player.stats <- nflreadr::load_player_stats(2021, stat_type = "offense")
+
+roster <- nflfastR::fast_scraper_roster(2021)
+
+roster <- roster %>%
+  select(gsis_id, position)
+
+player.stats <- player.stats %>%
+  left_join(roster, by = c("player_id" = "gsis_id"))
+
+player.stats <- player.stats %>%
+  filter(position == "QB")
+
+stats.money <- player.stats %>%
+  group_by(player_id) %>%
+  summarize(total.attempts = sum(attempts, na.rm = T),
+            total.epa = sum(passing_epa, na.rm = T),
+            total.ay = sum(passing_air_yards, na.rm = T),
+            total.py = sum(passing_yards, na.rm = T),
+            total.td = sum(passing_tds, na.rm = T))
+
+roster <- nflfastR::fast_scraper_roster(2021)
+
+roster <- roster %>%
+  select(gsis_id, full_name, team)
+
+stats.money <- stats.money %>%
+  left_join(roster, by = c("player_id" = "gsis_id"))
+
+salaries.2021 <- salaries.2021 %>%
+  select(player, base_salary)
+
+stats.money <- stats.money %>%
+  left_join(salaries.2021, by = c("full_name" = "player"))
+
+stats.money <- na.omit(stats.money)
+
+stats.money$base_salary = as.numeric(gsub("[\\$,]", "", stats.money$base_salary))
+
+stats.money <- stats.money %>%
+  filter(total.attempts >= 400)
+
+stats.money <- stats.money %>%
+  group_by(player_id, full_name, team) %>%
+  summarize(epa.money = base_salary / total.epa,
+            ay.money = base_salary / total.ay,
+            py.money = base_salary / total.py,
+            td.money = base_salary / total.td)
+
+stats.money <- stats.money %>%
+  left_join(teams_colors_logos, by = c("team" = "team_abbr")) %>%
+  select(full_name, epa.money, ay.money, py.money, td.money, team_color) %>%
+  ungroup()
+
+testing <- melt(stats.money)
+
+epa.per.play <- epa.per.play %>%
+  group_by(player_id) %>%
+  mutate(epa.per.dollar = base_salary / total.epa) %>%
+  filter(total.attempts >= 400)
+  
+ggplot(data = testing, aes(x = variable, y = value)) +
+  geom_boxplot() +
+  geom_jitter(color = testing$team_color)
