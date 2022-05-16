@@ -1,6 +1,6 @@
-data <- nflfastR::load_pbp(2004:2021)
+##requires tidytext
 
-options(digits = 1)
+data <- nflfastR::load_pbp(2004:2021)
 
 ben.epa <- data %>%
   filter(season_type == "REG") %>%
@@ -22,31 +22,24 @@ ben.epa <- ben.epa %>%
 ben.epa <- ben.epa %>%
   filter(attempts >= 200)
 
-ben.epa <- ben.epa 
-
-ben.epa %>%
-  
-ben.epa %>%
-  
 ggplot(data = ben.epa, aes(reorder_within(passer_id, -epa, season), epa)) +
   geom_col(aes(color = team, fill = team), width = 0.5) +
   nflplotR::scale_color_nfl(type = "secondary") +
   nflplotR::scale_fill_nfl(alpha = 0.4) +
-  theme_minimal() +
-  theme(axis.title.x = element_blank()) +
-  theme(axis.text.x = element_nfl_headshot(size = 1)) +
-  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
-  scale_x_reordered() +
-  ylab("EPA per Play") +
+  theme_bw() +
   theme(panel.background=element_rect(fill="#FFFFFF")) +
   theme(plot.background=element_rect(fill="#FFFFFF")) +
   theme(panel.border=element_rect(colour="#FFFFFF")) +
   theme(panel.grid.major=element_line(colour="#F3F3F3",size=.75)) +
   theme(panel.grid.minor = element_blank()) +
   theme(axis.ticks = element_blank()) +
-  theme(axis.text.y=element_text(size=11,colour="#000000",face="bold")) +
-  theme(axis.title.y=element_text(size=11,colour="#000000",face="bold",vjust=1.5)) +
-  theme(axis.title.x=element_text(size=11,colour="#000000",face="bold",vjust=-.5)) +
-  theme(plot.title=element_text(face="bold", colour="#000000",size=15))
+  theme(axis.title.x = element_blank()) +
+  theme(axis.text.x = element_nfl_headshot(size = 1)) +
+  theme(panel.background=element_rect(fill="#FFFFFF")) +
+  scale_y_continuous(breaks = scales::pretty_breaks(n = 5)) +
+  scale_x_reordered() +
+  ylab("EPA per Play") +
+  geom_hline(yintercept = 0, size = 0.8, color = "black", linetype = "dashed", alpha = 0.8) +
   facet_wrap(~ season, scales = "free_x", drop = TRUE)
-  
+
+ggsave("benepa.png", dpi = 400)
